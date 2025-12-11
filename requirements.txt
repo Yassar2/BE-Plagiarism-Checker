@@ -1,26 +1,23 @@
-# Web & server
 Flask==2.3.3
 flask-cors==4.0.0
 gunicorn==21.2.0
 
-# Data & ML
-numpy==1.25.2
+# versi numpy yang sudah wheel prebuilt
+numpy==1.24.6
 pandas==2.0.3
 scikit-learn==1.3.2
 joblib==1.3.2
 
-# NLP & Transformers
 transformers==4.35.0
 sentence-transformers==2.2.2
+
+# torch CPU prebuilt untuk Python 3.13
 torch==2.5.0+cpu
 torchvision==0.20.0+cpu
-# Extra index URL untuk CPU wheel
 --extra-index-url https://download.pytorch.org/whl/cpu
 
-# File handling
 PyPDF2==3.0.1
 python-docx==0.8.11
 
-# Utilities
 tqdm==4.67.1
 nltk==3.9.2
