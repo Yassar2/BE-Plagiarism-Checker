@@ -4,9 +4,9 @@ joblib
 numpy
 pandas
 scikit-learn
-sentence-transformers==3.0.1
+sentence-transformers==2.2.2 --no-deps
 transformers==4.35.0
-torch==2.5.1
+torch==1.13.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
 PyPDF2
 python-docx
 gunicorn
