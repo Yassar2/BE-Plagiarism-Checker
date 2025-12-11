@@ -10,10 +10,10 @@ import numpy as np
 import pandas as pd
 
 # ======== IMPORT SESUAI STRUKTUR FOLDER ========
-from services.embedding import EmbeddingService
-from services.recommender import RecommenderService
-from services import preprocessing
-from utils.helpers import format_results
+from backend.services.embedding import EmbeddingService
+from backend.services.recommender import RecommenderService
+from backend.services import preprocessing
+from backend.utils.helpers import format_results
 
 
 # ================= CONFIG =================
