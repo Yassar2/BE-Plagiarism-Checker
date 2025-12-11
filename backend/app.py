@@ -1,10 +1,8 @@
 # backend/app.py
 import os
 import traceback
-
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-
 import joblib
 import numpy as np
 import pandas as pd
@@ -18,56 +16,64 @@ from backend.utils.helpers import format_results
 # ================= CONFIG =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
-
 TOP_K_TFIDF = int(os.environ.get("TOP_K_TFIDF", 20))
 DEFAULT_TOP_K = int(os.environ.get("DEFAULT_TOP_K", 10))
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")  # contoh: https://fe-plagiarism-checker.vercel.app
 
 app = Flask(__name__)
+CORS(app, origins=FRONTEND_URL)
 
-# Ambil FRONTEND_URL dari env vars Railway, default ke '*' (semua domain)
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")
-CORS(app, origins=[FRONTEND_URL], supports_credentials=True)
+# ================= GLOBAL VARIABLES =================
+tfidf_vectorizer = None
+tfidf_matrix = None
+df = None
+corpus_texts = None
+corpus_embeddings = None
+embedding_service = None
+recommender = None
 
-# ================= LOAD FILES =================
-try:
-    tfidf_vectorizer = joblib.load(os.path.join(MODELS_DIR, "tfidf.pkl"))
-    tfidf_matrix = joblib.load(os.path.join(MODELS_DIR, "tfidf_matrix.pkl"))
+# ================== HELPER =================
+def load_models():
+    global tfidf_vectorizer, tfidf_matrix, df, corpus_texts, corpus_embeddings, embedding_service, recommender
 
-    df = pd.read_csv(os.path.join(MODELS_DIR, "corpus_clean.csv")).fillna("")
-    if "abstract" not in df.columns:
-        raise ValueError("Kolom 'abstract' tidak ditemukan dalam corpus_clean.csv")
+    if recommender is not None:
+        return recommender
 
-    corpus_texts = df["abstract"].astype(str).tolist()
-    corpus_embeddings = np.load(os.path.join(MODELS_DIR, "corpus_embeddings.npy"))
+    try:
+        tfidf_vectorizer = joblib.load(os.path.join(MODELS_DIR, "tfidf.pkl"))
+        tfidf_matrix = joblib.load(os.path.join(MODELS_DIR, "tfidf_matrix.pkl"))
 
-    embedding_service = EmbeddingService()
-    recommender = RecommenderService(
-        tfidf_vectorizer=tfidf_vectorizer,
-        tfidf_matrix=tfidf_matrix,
-        corpus_texts=corpus_texts,
-        corpus_embeddings=corpus_embeddings,
-        embedding_service=embedding_service,
-        top_k_tfidf=TOP_K_TFIDF
-    )
+        df = pd.read_csv(os.path.join(MODELS_DIR, "corpus_clean.csv")).fillna("")
+        if "abstract" not in df.columns:
+            raise ValueError("Kolom 'abstract' tidak ditemukan dalam corpus_clean.csv")
 
-    print("✅ Model & services loaded successfully.")
+        corpus_texts = df["abstract"].astype(str).tolist()
+        corpus_embeddings = np.load(os.path.join(MODELS_DIR, "corpus_embeddings.npy"))
 
-except Exception:
-    print("❌ Gagal load model:")
-    traceback.print_exc()
+        embedding_service = EmbeddingService()
+        recommender = RecommenderService(
+            tfidf_vectorizer=tfidf_vectorizer,
+            tfidf_matrix=tfidf_matrix,
+            corpus_texts=corpus_texts,
+            corpus_embeddings=corpus_embeddings,
+            embedding_service=embedding_service,
+            top_k_tfidf=TOP_K_TFIDF
+        )
+        print("✅ Model & services loaded successfully.")
+        return recommender
 
-    tfidf_vectorizer = None
-    tfidf_matrix = None
-    corpus_texts = None
-    corpus_embeddings = None
-    embedding_service = None
-    recommender = None
+    except Exception:
+        print("❌ Gagal load model:")
+        traceback.print_exc()
+        recommender = None
+        return None
 
 # ================== PARSE INPUT ==================
 def _parse_request_for_text(req):
     if req.files and "file" in req.files:
         file = req.files["file"]
         if file.filename:
+            from backend.services import preprocessing
             return preprocessing.extract_text_from_file(file)
         raise ValueError("File tidak valid.")
 
@@ -97,6 +103,9 @@ def health():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    global recommender
+    if recommender is None:
+        recommender = load_models()
     if recommender is None:
         return jsonify({"error": "Server tidak siap (model gagal dimuat)."}), 500
 
@@ -127,7 +136,7 @@ def predict():
             return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
         return jsonify({"error": "Internal server error"}), 500
 
-# ================= LOCAL / RAILWAY RUN =================
+# ================= LOCAL RUN =================
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Railway akan inject PORT otomatis
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
