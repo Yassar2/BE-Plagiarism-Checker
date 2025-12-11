@@ -1,5 +1,6 @@
 # backend/app.py
 import os
+import sys
 import traceback
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -7,7 +8,11 @@ import joblib
 import numpy as np
 import pandas as pd
 
-# ======== IMPORT SESUAI STRUKTUR FOLDER ========
+# ====== PATH FIX ======
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(ROOT_DIR)
+
+# ====== IMPORT SESUAI STRUKTUR FOLDER ======
 from backend.services.embedding import EmbeddingService
 from backend.services.recommender import RecommenderService
 from backend.services.preprocessing import jaccard_similarity
@@ -42,13 +47,22 @@ def load_models():
     if recommender is not None:
         return recommender
     try:
+        print("Loading TFIDF vectorizer...")
         tfidf_vectorizer = joblib.load(os.path.join(MODELS_DIR, "tfidf.pkl"))
+        print("TFIDF vocabulary size:", len(tfidf_vectorizer.vocabulary_))
+        
+        print("Loading TFIDF matrix...")
         tfidf_matrix = joblib.load(os.path.join(MODELS_DIR, "tfidf_matrix.pkl"))
+        
+        print("Loading corpus CSV...")
         df = pd.read_csv(os.path.join(MODELS_DIR, "corpus_clean.csv")).fillna("")
         if "abstract" not in df.columns:
             raise ValueError("Kolom 'abstract' tidak ditemukan dalam corpus_clean.csv")
         corpus_texts = df["abstract"].astype(str).tolist()
+        
+        print("Loading embeddings...")
         corpus_embeddings = np.load(os.path.join(MODELS_DIR, "corpus_embeddings.npy"))
+        
         embedding_service = EmbeddingService()
         recommender = RecommenderService(
             tfidf_vectorizer=tfidf_vectorizer,
@@ -107,22 +121,18 @@ def predict():
     if recommender is None:
         return jsonify({"error": "Server tidak siap (model gagal dimuat)."}), 500
     try:
-        # ambil top_k
         top_k = request.args.get("top_k")
         if request.is_json:
             top_k = request.get_json(silent=True).get("top_k", top_k)
         top_k = int(top_k) if top_k else DEFAULT_TOP_K
 
-        # ambil teks
         query_text = _parse_request_for_text(request)
         if not query_text.strip():
             return jsonify({"error": "Teks kosong"}), 400
 
-        # search
         result = recommender.search(query_text, top_k=top_k)
         formatted = format_results(result, df)
 
-        # limit panjang abstract
         MAX_ABSTRACT_LEN = int(os.environ.get("MAX_ABSTRACT_LEN", 2000))
         for r in formatted:
             if "abstract" in r and len(r["abstract"]) > MAX_ABSTRACT_LEN:
@@ -139,5 +149,7 @@ def predict():
 
 # ================= LOCAL RUN ==================
 if __name__ == "__main__":
+    # Auto-load model saat start
+    recommender = load_models()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
