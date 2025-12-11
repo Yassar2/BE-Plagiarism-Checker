@@ -12,7 +12,7 @@ import pandas as pd
 # ======== IMPORT SESUAI STRUKTUR FOLDER ========
 from backend.services.embedding import EmbeddingService
 from backend.services.recommender import RecommenderService
-from backend.services import preprocessing
+from backend.services.preprocessing import jaccard_similarity
 from backend.utils.helpers import format_results
 
 
