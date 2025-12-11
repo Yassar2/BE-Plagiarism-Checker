@@ -3,7 +3,7 @@
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 
-from services.preprocessing import jaccard_similarity
+from backend.services.preprocessing import jaccard_similarity
 
 class RecommenderService:
     def __init__(
