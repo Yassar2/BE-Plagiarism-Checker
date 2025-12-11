@@ -24,13 +24,9 @@ DEFAULT_TOP_K = int(os.environ.get("DEFAULT_TOP_K", 10))
 
 app = Flask(__name__)
 
-# ================= CORS =================
-# dev -> *, prod -> domain frontend
-FRONTEND_URL = os.environ.get("FRONTEND_URL")
-if FRONTEND_URL:
-    CORS(app, origins=FRONTEND_URL)
-else:
-    CORS(app)  # fallback dev, semua origin diizinkan
+# Ambil FRONTEND_URL dari env vars Railway, default ke '*' (semua domain)
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "*")
+CORS(app, origins=[FRONTEND_URL], supports_credentials=True)
 
 # ================= LOAD FILES =================
 try:
@@ -131,7 +127,7 @@ def predict():
             return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
         return jsonify({"error": "Internal server error"}), 500
 
-# ================= LOCAL RUN =================
+# ================= LOCAL / RAILWAY RUN =================
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 5000))  # Railway akan inject PORT otomatis
     app.run(host="0.0.0.0", port=port)
