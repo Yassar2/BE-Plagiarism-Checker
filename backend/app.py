@@ -15,7 +15,6 @@ from backend.services.recommender import RecommenderService
 from backend.services.preprocessing import jaccard_similarity
 from backend.utils.helpers import format_results
 
-
 # ================= CONFIG =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, "models")
@@ -24,8 +23,14 @@ TOP_K_TFIDF = int(os.environ.get("TOP_K_TFIDF", 20))
 DEFAULT_TOP_K = int(os.environ.get("DEFAULT_TOP_K", 10))
 
 app = Flask(__name__)
-CORS(app)  # allow all domains (frontend terpisah butuh ini)
 
+# ================= CORS =================
+# dev -> *, prod -> domain frontend
+FRONTEND_URL = os.environ.get("FRONTEND_URL")
+if FRONTEND_URL:
+    CORS(app, origins=FRONTEND_URL)
+else:
+    CORS(app)  # fallback dev, semua origin diizinkan
 
 # ================= LOAD FILES =================
 try:
@@ -62,7 +67,6 @@ except Exception:
     embedding_service = None
     recommender = None
 
-
 # ================== PARSE INPUT ==================
 def _parse_request_for_text(req):
     if req.files and "file" in req.files:
@@ -87,7 +91,6 @@ def _parse_request_for_text(req):
 
     raise ValueError("Tidak menemukan teks atau file. Kirim JSON {'text': ...}")
 
-
 # ================= ROUTES =================
 @app.route("/health")
 def health():
@@ -95,7 +98,6 @@ def health():
         "status": "ok",
         "models_loaded": recommender is not None
     })
-
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -128,7 +130,6 @@ def predict():
         if os.environ.get("DEBUG") == "1":
             return jsonify({"error": str(e), "trace": traceback.format_exc()}), 500
         return jsonify({"error": "Internal server error"}), 500
-
 
 # ================= LOCAL RUN =================
 if __name__ == "__main__":
