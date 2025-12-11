@@ -7,10 +7,8 @@ from docx import Document
 
 word_re = re.compile(r"\w+", flags=re.UNICODE)
 
-
 def tokenize_text(text):
     return [t.lower() for t in word_re.findall(str(text))]
-
 
 def jaccard_similarity(a, b):
     set_a = set(tokenize_text(a))
@@ -19,19 +17,18 @@ def jaccard_similarity(a, b):
         return 0.0
     return len(set_a & set_b) / len(set_a | set_b)
 
-
 def extract_text_from_pdf(file_stream):
     reader = PyPDF2.PdfReader(file_stream)
     text = ""
     for page in reader.pages:
-        text += page.extract_text() + "\n"
+        extracted = page.extract_text()
+        if extracted:
+            text += extracted + "\n"
     return text
-
 
 def extract_text_from_docx(file_stream):
     doc = Document(file_stream)
     return "\n".join([p.text for p in doc.paragraphs])
-
 
 def extract_text_from_file(file):
     filename = file.filename.lower()

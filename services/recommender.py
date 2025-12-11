@@ -5,7 +5,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 from services.preprocessing import jaccard_similarity
 
-
 class RecommenderService:
     def __init__(
         self,
@@ -22,7 +21,7 @@ class RecommenderService:
         self.vectorizer = tfidf_vectorizer
         self.tfidf_matrix = tfidf_matrix
         self.corpus_texts = corpus_texts
-        self.corpus_embeddings = corpus_embeddings
+        self.corpus_embeddings = corpus_embeddings.astype("float32")
         self.embedding_service = embedding_service
 
         self.weight_lexical = weight_lexical
@@ -45,26 +44,19 @@ class RecommenderService:
         return np.array([
             jaccard_similarity(query, self.corpus_texts[i])
             for i in candidate_indices
-        ])
+        ], dtype="float32")
 
     def search(self, query, top_k=10):
-        # 1. lexical
         idx_top, lexical_scores = self.tfidf_search(query)
-
-        # 2. semantic
         semantic_scores = self.compute_semantic(query, idx_top)
-
-        # 3. structure
         structure_scores = self.compute_structure(query, idx_top)
 
-        # 4. weighted sum
         final_scores = (
             lexical_scores * self.weight_lexical +
             structure_scores * self.weight_structure +
             semantic_scores * self.weight_semantic
         )
 
-        # 5. ambil top-k
         top_indices = final_scores.argsort()[::-1][:top_k]
 
         return {
