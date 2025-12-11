@@ -4,9 +4,13 @@ joblib
 numpy
 pandas
 scikit-learn
-sentence-transformers==2.2.2 --no-deps
+sentence-transformers==2.2.2
 transformers==4.35.0
-torch==1.13.1+cpu --extra-index-url https://download.pytorch.org/whl/cpu
+
+# Torch CPU paling kecil dan paling aman untuk deployment
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==1.13.1+cpu
+
 PyPDF2
 python-docx
 gunicorn
